@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import router
 from app.core.config import get_settings
-from app.core.events import event_bus
 from app.db.client import db
 from app.db.seed import seed
 
@@ -55,22 +54,12 @@ async def request_logging(request: Request, call_next):
     start = perf_counter()
     response = await call_next(request)
     duration_ms = round((perf_counter() - start) * 1000, 2)
-    event_bus.publish(
-        "http.request",
-        {
-            "method": request.method,
-            "path": request.url.path,
-            "statusCode": response.status_code,
-            "durationMs": duration_ms,
-        },
-    )
     response.headers["X-Process-Time-Ms"] = str(duration_ms)
     return response
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(_: Request, exc: Exception):
-    event_bus.publish("http.error", {"message": str(exc)})
     return JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
 

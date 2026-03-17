@@ -1,17 +1,41 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
+import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-
-const demoTokens = ['ADMIN_TOKEN', 'USER1_TOKEN', 'USER2_TOKEN', 'USER3_TOKEN'];
 
 export default function SignInPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const [token, setToken] = useState('USER1_TOKEN');
   const [error, setError] = useState('');
+  const [tokensError, setTokensError] = useState('');
+  const [signInTokens, setSignInTokens] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadTokens() {
+      try {
+        const users = await api.signInTokens();
+        if (!ignore) {
+          setSignInTokens(users);
+        }
+      } catch (loadError) {
+        if (!ignore) {
+          setTokensError(loadError.message);
+        }
+      }
+    }
+
+    loadTokens();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -35,11 +59,19 @@ export default function SignInPage() {
           <Stack component="form" spacing={3} onSubmit={handleSubmit}>
             <Typography variant="h4">Sign in</Typography>
             <Typography color="text.secondary" variant="body2">
-              Use one of the predefined backend tokens to enter the application.
+              Use any current user token from the backend to enter the application, including invited users.
             </Typography>
             {error && <Alert severity="error">{error}</Alert>}
+            {tokensError && <Alert severity="warning">{tokensError}</Alert>}
             <TextField fullWidth label="Access token" value={token} onChange={(event) => setToken(event.target.value)} />
-            <Typography variant="body2">{`Demo tokens: ${demoTokens.join(', ')}`}</Typography>
+            <Stack spacing={1}>
+              <Typography variant="body2">Available user tokens:</Typography>
+              {signInTokens.map((user) => (
+                <Typography key={user.token} variant="body2">
+                  {`${user.name} (${user.role}): ${user.token}`}
+                </Typography>
+              ))}
+            </Stack>
             <Button disabled={submitting} type="submit" variant="contained">
               Sign in
             </Button>

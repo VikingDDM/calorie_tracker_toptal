@@ -5,7 +5,6 @@ import { api } from '../api/client';
 import AdminEntryManager from '../components/AdminEntryManager';
 import AdminCharts from '../components/AdminCharts';
 import EntryList from '../components/EntryList';
-import ObservabilityFeed from '../components/ObservabilityFeed';
 import PageShell from '../components/PageShell';
 import { useAuth } from '../context/AuthContext';
 
@@ -113,9 +112,6 @@ export default function AdminDashboardPage() {
               onDelete={handleDelete}
               onEdit={handleEditOpen}
             />
-          </Box>
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 12px)' }, minWidth: 280 }}>
-            <ObservabilityFeed token={token} />
           </Box>
         </Box>
       </Stack>

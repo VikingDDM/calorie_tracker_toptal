@@ -23,6 +23,7 @@ async function request(path, { token, method = 'GET', body } = {}) {
 }
 
 export const api = {
+  signInTokens: () => request('/auth/tokens'),
   signIn: (token) => request('/auth/signin', { method: 'POST', body: { token } }),
   signOut: (token) => request('/auth/signout', { token, method: 'POST' }),
   me: (token) => request('/me', { token }),
@@ -36,5 +37,4 @@ export const api = {
   inviteFriend: (token, payload) => request('/users/invite', { token, method: 'POST', body: payload }),
   entriesComparison: (token) => request('/reports/entries-comparison', { token }),
   averageCalories: (token) => request('/reports/average-calories', { token }),
-  observabilityUrl: (token) => `http://localhost:8000/api/observability/stream?token=${encodeURIComponent(token)}`,
 };

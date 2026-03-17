@@ -28,6 +28,15 @@ class UserListItem(BaseModel):
     dailyCalorieLimit: int
 
 
+class SignInTokenItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    email: EmailStr
+    role: str
+    token: str
+
+
 class AuthResponse(BaseModel):
     user: UserSummary
 

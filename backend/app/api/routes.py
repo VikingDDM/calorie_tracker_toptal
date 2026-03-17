@@ -1,11 +1,9 @@
-import asyncio
 import secrets
 import string
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sse_starlette import EventSourceResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.schemas import (
     AuthResponse,
@@ -18,11 +16,11 @@ from app.api.schemas import (
     InviteFriendResponse,
     MealRenameRequest,
     MealResponse,
+    SignInTokenItem,
     SignInRequest,
     UserListItem,
     UserSummary,
 )
-from app.core.events import event_bus
 from app.db.client import db
 from app.services.auth import get_current_user, require_admin
 from app.services.entries import ensure_entry_access, get_meal_for_user, validate_meal_entry_limit
@@ -63,13 +61,17 @@ async def sign_in(payload: SignInRequest) -> AuthResponse:
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token.")
 
-    event_bus.publish("auth.signin", {"userId": user.id, "email": user.email})
     return AuthResponse(user=UserSummary.model_validate(user))
+
+
+@router.get("/auth/tokens", response_model=list[SignInTokenItem])
+async def list_sign_in_tokens() -> list[SignInTokenItem]:
+    users = await db.user.find_many(order=[{"role": "asc"}, {"name": "asc"}])
+    return [SignInTokenItem.model_validate(user) for user in users]
 
 
 @router.post("/auth/signout")
 async def sign_out(current_user=Depends(get_current_user)) -> dict[str, str]:
-    event_bus.publish("auth.signout", {"userId": current_user.id, "email": current_user.email})
     return {"message": "Signed out."}
 
 
@@ -110,7 +112,6 @@ async def rename_meal(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal not found.")
 
     updated = await db.meal.update(where={"id": meal_id}, data={"name": payload.name.strip()})
-    event_bus.publish("meal.renamed", {"userId": current_user.id, "mealId": meal_id, "name": updated.name})
     return MealResponse.model_validate(updated)
 
 
@@ -157,7 +158,6 @@ async def create_entry(
         },
         include={"meal": True, "user": True},
     )
-    event_bus.publish("entry.created", {"entryId": entry.id, "userId": target_user_id, "calories": entry.calories})
     return _serialize_entry(entry)
 
 
@@ -189,7 +189,6 @@ async def update_entry(
         },
         include={"meal": True, "user": True},
     )
-    event_bus.publish("entry.updated", {"entryId": entry.id, "userId": target_user_id})
     return _serialize_entry(entry)
 
 
@@ -198,7 +197,6 @@ async def delete_entry(entry_id: int, current_user=Depends(get_current_user)) ->
     require_admin(current_user)
     entry = await ensure_entry_access(entry_id, current_user)
     await db.foodentry.delete(where={"id": entry_id})
-    event_bus.publish("entry.deleted", {"entryId": entry_id, "userId": entry.userId})
     return {"message": "Entry deleted."}
 
 
@@ -237,7 +235,6 @@ async def invite_friend(
             }
         )
 
-    event_bus.publish("user.invited", {"inviterId": current_user.id, "userId": user.id, "email": user.email})
     return InviteFriendResponse(
         generatedPassword=password,
         generatedToken=token,
@@ -284,24 +281,3 @@ async def average_calories(current_user=Depends(get_current_user)) -> list[Avera
         for user_id, calories in grouped.items()
     ]
     return sorted(result, key=lambda item: item.userName.lower())
-
-
-@router.get("/observability/stream")
-async def observability_stream(request: Request, current_user=Depends(get_current_user)) -> EventSourceResponse:
-    require_admin(current_user)
-    queue = event_bus.subscribe()
-
-    async def event_generator():
-        try:
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    message = await asyncio.wait_for(queue.get(), timeout=15)
-                    yield {"event": "message", "data": message}
-                except asyncio.TimeoutError:
-                    yield {"event": "ping", "data": "{}"}
-        finally:
-            event_bus.unsubscribe(queue)
-
-    return EventSourceResponse(event_generator())

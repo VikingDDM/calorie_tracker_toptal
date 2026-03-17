@@ -4,7 +4,7 @@ Full-stack calorie tracking application built with FastAPI, Prisma + SQLite, and
 
 ## Structure
 
-- `backend/`: FastAPI API, Prisma schema, seed data, auth/RBAC, reporting, observability stream
+- `backend/`: FastAPI API, Prisma schema, seed data, auth/RBAC, reporting
 - `frontend/`: React app with sign-in, user page, admin dashboard, and admin self-service page
 
 ## Features
@@ -19,7 +19,6 @@ Full-stack calorie tracking application built with FastAPI, Prisma + SQLite, and
 - Daily calorie totals with limit exceed highlighting
 - Invite-a-friend flow that creates a new `USER` and returns generated credentials
 - Admin reporting for 7-day entry comparison and average calories per user
-- Lightweight real-time backend observability stream for admin users
 
 ## Sample Accounts
 
@@ -122,10 +121,6 @@ Frontend runs on `http://localhost:5173` and expects the backend on `http://loca
 
 - `GET /api/reports/entries-comparison` (`ADMIN` only)
 - `GET /api/reports/average-calories` (`ADMIN` only)
-
-### Observability
-
-- `GET /api/observability/stream` (`ADMIN` only, SSE)
 
 ## Example Requests
 

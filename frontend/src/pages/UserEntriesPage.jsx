@@ -9,7 +9,7 @@ import MealManager from '../components/MealManager';
 import PageShell from '../components/PageShell';
 import { useAuth } from '../context/AuthContext';
 
-export default function UserEntriesPage() {
+export default function UserEntriesPage({ ownEntriesOnly = false }) {
   const { token, user } = useAuth();
   const [entries, setEntries] = useState([]);
   const [meals, setMeals] = useState([]);
@@ -19,7 +19,10 @@ export default function UserEntriesPage() {
 
   const loadData = async () => {
     try {
-      const [entriesData, mealsData] = await Promise.all([api.entries(token), api.meals(token)]);
+      const [entriesData, mealsData] = await Promise.all([
+        api.entries(token, ownEntriesOnly ? user.id : undefined),
+        api.meals(token),
+      ]);
       setEntries(entriesData);
       setMeals(mealsData);
     } catch (loadError) {
@@ -29,7 +32,7 @@ export default function UserEntriesPage() {
 
   useEffect(() => {
     loadData();
-  }, [token]);
+  }, [token, ownEntriesOnly, user.id]);
 
   const handleCreate = async (payload) => {
     setBusy(true);
